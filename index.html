@@ -244,14 +244,13 @@
     body.dark-theme .chat-inputs input { background-color: #2d2d2d; color: #e0e0e0; border-color: #555; }
     </style>
 </head>
-<body>
+<body class="dark-theme">
 
 <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <h1>Генератор сетевых настроек</h1>
         <div style="display: flex; gap: 15px; align-items: center;">
-            <button onclick="selfDestruct()" style="background: none; border: none; font-size: 24px; cursor: pointer; padding: 0; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'" title="НЕ НАЖИМАТЬ!">🧨</button>
-            <button id="themeToggle" onclick="toggleTheme()" style="background: none; border: none; font-size: 24px; cursor: pointer; padding: 0;" title="Переключить тему">🌙</button>
+            <button id="themeToggle" onclick="toggleTheme()" style="background: none; border: none; font-size: 24px; cursor: pointer; padding: 0;" title="Переключить тему">☀️</button>
         </div>
     </div>
     
@@ -259,6 +258,7 @@
     <div class="buttons" style="margin-top: 10px;">
         <button class="btn-preset" onclick="loadPreset('default')">Пример 1 (172.16.x.x)</button>
         <button class="btn-preset" onclick="loadPreset('preset1')">Пример 2 (192.168.x.x)</button>
+        <button class="btn-preset" onclick="loadPreset('preset3')">Пример 3 (au-team)</button>
     </div>
 
     <h3>Общие настройки</h3>
@@ -271,6 +271,16 @@
             <label for="timezone">Часовой пояс:</label>
             <input type="text" id="timezone" value="Asia/Yekaterinburg">
         </div>
+        <div class="form-group">
+            <label for="extDns">Внешний DNS:</label>
+            <input type="text" id="extDns" value="8.8.8.8">
+        </div>
+    </div>
+
+    <h3>Алиасы DNS (CNAME)</h3>
+    <div class="form-section">
+        <div class="form-group"><label>Алиас 1:</label><input type="text" id="cname1" value="moodle"></div>
+        <div class="form-group"><label>Алиас 2:</label><input type="text" id="cname2" value="wiki"></div>
     </div>
 
     <h3>Пользователи и доступ</h3>
@@ -316,21 +326,24 @@
 
     <h3>Сетевые настройки (IP-адреса и Вместимость)</h3>
     
-    <h4>VLAN 100 (Серверы HQ)</h4>
+    <h4>Серверы HQ</h4>
     <div class="form-section">
-        <div class="form-group"><label>Подсеть VLAN 100:</label><input type="text" id="subnet100" value="172.16.100.0"></div>
+        <div class="form-group"><label>VLAN ID:</label><input type="number" id="vlan100" value="100"></div>
+        <div class="form-group"><label>Подсеть:</label><input type="text" id="subnet100" value="172.16.100.0"></div>
         <div class="form-group"><label>Вместимость (адресов) <span id="hint100" class="mask-hint"></span>:</label><input type="number" id="hosts100" value="6" oninput="updateMaskHints()" min="1" max="254"></div>
     </div>
 
-    <h4>VLAN 200 (Клиенты HQ)</h4>
+    <h4>Клиенты HQ</h4>
     <div class="form-section">
-        <div class="form-group"><label>Подсеть VLAN 200:</label><input type="text" id="subnet200" value="172.16.200.0"></div>
+        <div class="form-group"><label>VLAN ID:</label><input type="number" id="vlan200" value="200"></div>
+        <div class="form-group"><label>Подсеть:</label><input type="text" id="subnet200" value="172.16.200.0"></div>
         <div class="form-group"><label>Вместимость (адресов) <span id="hint200" class="mask-hint"></span>:</label><input type="number" id="hosts200" value="14" oninput="updateMaskHints()" min="1" max="254"></div>
     </div>
 
-    <h4>VLAN 999 (Управление HQ)</h4>
+    <h4>Управление HQ</h4>
     <div class="form-section">
-        <div class="form-group"><label>Подсеть VLAN 999:</label><input type="text" id="subnet999" value="172.16.99.0"></div>
+        <div class="form-group"><label>VLAN ID:</label><input type="number" id="vlan999" value="999"></div>
+        <div class="form-group"><label>Подсеть:</label><input type="text" id="subnet999" value="172.16.99.0"></div>
         <div class="form-group"><label>Вместимость (адресов) <span id="hint999" class="mask-hint"></span>:</label><input type="number" id="hosts999" value="62" oninput="updateMaskHints()" min="1" max="254"></div>
     </div>
 
@@ -379,8 +392,12 @@
         </div>
     </details>
 
-    <div class="buttons">
+    <div class="buttons" style="align-items: center; gap: 20px;">
         <button class="btn-generate" onclick="generateScript()">Сгенерировать скрипты</button>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="removeComments" style="width: 20px; height: 20px; cursor: pointer; margin: 0;">
+            <label for="removeComments" style="margin: 0; cursor: pointer; font-weight: bold;">Убрать комментарии</label>
+        </div>
     </div>
 
     <div id="scriptsContainer">
@@ -415,41 +432,15 @@
     }
 
     // Применяем сохраненную тему при загрузке страницы
-    if (localStorage.getItem('theme') === 'dark') {
-        document.body.classList.add('dark-theme');
-        document.getElementById('themeToggle').innerText = '☀️';
+    if (localStorage.getItem('theme') === 'light') {
+        document.body.classList.remove('dark-theme');
+        document.getElementById('themeToggle').innerText = '🌙';
     }
 
     // Переключение видимости чата
     function toggleChat() {
         const chat = document.getElementById('chatContainer');
         chat.classList.toggle('active');
-    }
-
-    // Смешная кнопка самоуничтожения
-    function selfDestruct() {
-        if (!confirm("ВНИМАНИЕ! Вы уверены, что хотите запустить протокол самоуничтожения?")) return;
-        
-        let count = 15;
-        document.body.style.transition = "background-color 0.1s";
-        
-        const timer = setInterval(() => {
-            document.body.style.backgroundColor = count % 2 === 0 ? "#dc3545" : "#000000";
-            document.body.style.transform = `translate(${Math.random() * 20 - 10}px, ${Math.random() * 20 - 10}px) rotate(${Math.random() * 4 - 2}deg)`;
-            count--;
-            
-            if (count < 0) {
-                clearInterval(timer);
-                document.body.style.transform = "none";
-                document.body.innerHTML = `
-                    <div style="height: 100vh; width: 100vw; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; color: #ff3333; font-family: 'Courier New', monospace; text-align: center; margin: 0; position: fixed; top: 0; left: 0;">
-                        <h1 style="font-size: 100px; margin: 0; text-shadow: 0 0 20px red;">💥 БУМ! 💥</h1>
-                        <p style="font-size: 24px; color: #aaa; margin-top: 20px;">Всё сломалось. Но это было красиво.</p>
-                        <button onclick="location.reload()" style="margin-top: 30px; padding: 15px 30px; font-size: 18px; background: #333; color: white; border: 1px solid #555; border-radius: 5px; cursor: pointer; transition: 0.3s;" onmouseover="this.style.background='#555'" onmouseout="this.style.background='#333'">Восстановить систему</button>
-                    </div>
-                `;
-            }
-        }, 150);
     }
 
     // Логика подбора маски на основе требуемых хостов
@@ -492,6 +483,13 @@
         const maskBr = getCidr(document.getElementById('hostsBr').value);
         const maskIsp = getCidr(document.getElementById('hostsIsp').value);
         const maskGre = getCidr(document.getElementById('hostsGre').value);
+
+        const extDns = document.getElementById('extDns').value || '8.8.8.8';
+        const cname1 = document.getElementById('cname1').value || 'moodle';
+        const cname2 = document.getElementById('cname2').value || 'wiki';
+        const vlan100Id = document.getElementById('vlan100').value || '100';
+        const vlan200Id = document.getElementById('vlan200').value || '200';
+        const vlan999Id = document.getElementById('vlan999').value || '999';
 
         const nameHqRtr = document.getElementById('nameHqRtr').value;
         const nameHqSrv = document.getElementById('nameHqSrv').value;
@@ -594,7 +592,7 @@ echo 'default via ${ipIspBr}' > /etc/net/ifaces/enp7s1/ipv4route
 mkdir /etc/net/ifaces/{enp7s2,gre1} 
 echo -e 'BOOTPROTO=static\\nTYPE=eth' > /etc/net/ifaces/enp7s2/options 
 echo '${ipBrIntRtr}/${maskBr}' > /etc/net/ifaces/enp7s2/ipv4address 
-echo 'nameserver 8.8.8.8' > /etc/net/ifaces/enp7s1/resolv.conf
+echo 'nameserver ${extDns}' > /etc/net/ifaces/enp7s1/resolv.conf
 systemctl restart network
 
 # -------GRE-------
@@ -674,15 +672,15 @@ echo '${ipHqExt}/${maskIsp}' > /etc/net/ifaces/enp7s1/ipv4address
 echo 'default via ${ipIspHq}' > /etc/net/ifaces/enp7s1/ipv4route 
 systemctl restart network
 # -------Настройка внутренних вланов------- 
-mkdir /etc/net/ifaces/{enp7s2,enp7s2.{100,200,999},gre1} 
+mkdir /etc/net/ifaces/{enp7s2,enp7s2.{${vlan100Id},${vlan200Id},${vlan999Id}},gre1} 
 echo -e 'BOOTPROTO=static\\nTYPE=eth' > /etc/net/ifaces/enp7s2/options 
-echo -e 'BOOTPROTO=static\\nTYPE=vlan\\nVID=100\\nHOST=enp7s2\\nONBOOT=yes' > /etc/net/ifaces/enp7s2.100/options 
-echo -e 'BOOTPROTO=static\\nTYPE=vlan\\nVID=200\\nHOST=enp7s2\\nONBOOT=yes' > /etc/net/ifaces/enp7s2.200/options 
-echo -e 'BOOTPROTO=static\\nTYPE=vlan\\nVID=999\\nHOST=enp7s2\\nONBOOT=yes' > /etc/net/ifaces/enp7s2.999/options
-echo 'nameserver 8.8.8.8' > /etc/net/ifaces/enp7s1/resolv.conf
-echo '${ipHqVlan100Rtr}/${mask100}' > /etc/net/ifaces/enp7s2.100/ipv4address 
-echo '${ipHqVlan200Rtr}/${mask200}' > /etc/net/ifaces/enp7s2.200/ipv4address 
-echo '${ipHqVlan999Rtr}/${mask999}' > /etc/net/ifaces/enp7s2.999/ipv4address 
+echo -e 'BOOTPROTO=static\\nTYPE=vlan\\nVID=${vlan100Id}\\nHOST=enp7s2\\nONBOOT=yes' > /etc/net/ifaces/enp7s2.${vlan100Id}/options 
+echo -e 'BOOTPROTO=static\\nTYPE=vlan\\nVID=${vlan200Id}\\nHOST=enp7s2\\nONBOOT=yes' > /etc/net/ifaces/enp7s2.${vlan200Id}/options 
+echo -e 'BOOTPROTO=static\\nTYPE=vlan\\nVID=${vlan999Id}\\nHOST=enp7s2\\nONBOOT=yes' > /etc/net/ifaces/enp7s2.${vlan999Id}/options
+echo 'nameserver ${extDns}' > /etc/net/ifaces/enp7s1/resolv.conf
+echo '${ipHqVlan100Rtr}/${mask100}' > /etc/net/ifaces/enp7s2.${vlan100Id}/ipv4address 
+echo '${ipHqVlan200Rtr}/${mask200}' > /etc/net/ifaces/enp7s2.${vlan200Id}/ipv4address 
+echo '${ipHqVlan999Rtr}/${mask999}' > /etc/net/ifaces/enp7s2.${vlan999Id}/ipv4address 
 systemctl restart network
 # -------GRE-------
 # +++ 
@@ -738,15 +736,15 @@ interface gre1
 	no ip ospf passive 
 exit 
 !
-interface enp7s2.100
+interface enp7s2.${vlan100Id}
 	ip ospf area 0
 exit
 !
-interface enp7s2.200
+interface enp7s2.${vlan200Id}
 	ip ospf area 0
 exit
 !
-interface enp7s2.999 
+interface enp7s2.${vlan999Id} 
 	ip ospf area 0
 exit
 !
@@ -770,7 +768,7 @@ max-lease-time 7200;
 }
 EOF
 # +++
-sed -i 's/DHCPDARGS=/DHCPDARGS=enp7s2.200/g' /etc/sysconfig/dhcpd
+sed -i 's/DHCPDARGS=/DHCPDARGS=enp7s2.${vlan200Id}/g' /etc/sysconfig/dhcpd
 systemctl enable --now dhcpd
 systemctl restart network
 systemctl restart dhcpd`;
@@ -783,7 +781,7 @@ hostnamectl hostname ${nameHqSrv}.${domain}
 echo -e 'BOOTPROTO=static\\nTYPE=eth\\nONBOOT=yes' > /etc/net/ifaces/enp7s1/options 
 echo '${ipHqVlan100Srv}/${mask100}' > /etc/net/ifaces/enp7s1/ipv4address
 echo 'default via ${ipHqVlan100Rtr}' > /etc/net/ifaces/enp7s1/ipv4route
-echo 'nameserver 8.8.8.8' > /etc/net/ifaces/enp7s1/resolv.conf
+echo 'nameserver ${extDns}' > /etc/net/ifaces/enp7s1/resolv.conf
 systemctl restart network
 # ------Установка необходимого ПО-------
 apt-get update && apt-get install bind bind-utils tzdata -y
@@ -811,7 +809,7 @@ options {
     directory "/etc/bind/zone";
     listen-on { ${ipHqVlan100Srv}; 127.0.0.1; };
     allow-query { any; };
-    forwarders { 8.8.8.8; };
+    forwarders { ${extDns}; };
     recursion yes;
 };
 EOF
@@ -844,8 +842,8 @@ ${nameHqSrv}  IN A    ${ipHqVlan100Srv}
 ${nameHqCli}  IN A    ${ipHqVlan200Cli}
 ${nameBrRtr}  IN A    ${ipBrIntRtr}
 ${nameBrSrv}  IN A    ${ipBrIntSrv}
-moodle  IN CNAME ${nameHqRtr}.${domain}.
-wiki    IN CNAME ${nameHqRtr}.${domain}.
+${cname1}  IN CNAME ${nameHqRtr}.${domain}.
+${cname2}    IN CNAME ${nameHqRtr}.${domain}.
 EOF
 # +++
 cat > /etc/bind/zone/${revZone} << 'EOF'
@@ -891,7 +889,7 @@ hostnamectl hostname ${nameBrSrv}.${domain}
 echo -e 'BOOTPROTO=static\\nTYPE=eth' > /etc/net/ifaces/enp7s1/options 
 echo '${ipBrIntSrv}/${maskBr}' > /etc/net/ifaces/enp7s1/ipv4address 
 echo 'default via ${ipBrIntRtr}' > /etc/net/ifaces/enp7s1/ipv4route 
-echo 'nameserver 8.8.8.8' > /etc/net/ifaces/enp7s1/resolv.conf
+echo 'nameserver ${extDns}' > /etc/net/ifaces/enp7s1/resolv.conf
 systemctl restart network
 # -------Установка-------
 apt-get update && apt-get install tzdata -y
@@ -926,7 +924,18 @@ echo -e 'search ${domain}\\nnameserver ${ipHqVlan100Srv}' > /etc/resolv.conf`;
         const container = document.getElementById('scriptsContainer');
         container.innerHTML = '';
 
+        const removeComments = document.getElementById('removeComments').checked;
+
         Object.keys(scripts).forEach((deviceName) => {
+            let finalScript = scripts[deviceName];
+            if (removeComments) {
+                finalScript = finalScript.split('\n').filter(line => {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith('#!')) return true; // Оставляем shebang
+                    return !trimmed.startsWith('#');
+                }).filter(line => line.trim() !== '').join('\n'); // Также удаляем пустые строки, оставшиеся от комментариев
+            }
+            
             const id = 'script-' + deviceName.toLowerCase();
             const block = document.createElement('div');
             block.className = 'device-block';
@@ -935,7 +944,7 @@ echo -e 'search ${domain}\\nnameserver ${ipHqVlan100Srv}' > /etc/resolv.conf`;
                     <h2>${deviceName}</h2>
                     <button class="btn-copy" onclick="copyText('${id}', this)">Копировать</button>
                 </div>
-                <pre id="${id}" contenteditable="true" spellcheck="false"><code>${scripts[deviceName]}</code></pre>
+                <pre id="${id}" contenteditable="true" spellcheck="false"><code>${finalScript}</code></pre>
             `;
             container.appendChild(block);
         });
@@ -959,22 +968,34 @@ echo -e 'search ${domain}\\nnameserver ${ipHqVlan100Srv}' > /etc/resolv.conf`;
     function loadPreset(type) {
         const presets = {
             'default': {
-                domain: 'quantumflux.local', timezone: 'Asia/Yekaterinburg',
+                domain: 'quantumflux.local', timezone: 'Asia/Yekaterinburg', extDns: '8.8.8.8', cname1: 'moodle', cname2: 'wiki',
                 rtrUser: 'routerfox', rtrPwd: 'P@$$word', srvUser: 'cyberpanda', srvPwd: 'P@ssw0rd', srvUid: '1001', sshPort: '2020',
                 nameHqRtr: 'hq-rtr', nameHqSrv: 'hq-srv', nameHqCli: 'hq-cli', nameBrRtr: 'br-rtr', nameBrSrv: 'br-srv',
                 subnetIspHq: '172.16.4.0', subnetIspBr: '172.16.5.0',
                 subnet100: '172.16.100.0', subnet200: '172.16.200.0', subnet999: '172.16.99.0',
                 subnetBr: '172.16.6.0', subnetGre: '10.10.10.0',
+                vlan100: '100', vlan200: '200', vlan999: '999',
                 hosts100: '6', hosts200: '14', hosts999: '62', hostsBr: '30', hostsIsp: '14', hostsGre: '2'
             },
             'preset1': {
-                domain: 'cybernet.local', timezone: 'Asia/Yekaterinburg',
+                domain: 'cybernet.local', timezone: 'Asia/Yekaterinburg', extDns: '8.8.8.8', cname1: 'moodle', cname2: 'wiki',
                 rtrUser: 'admin', rtrPwd: 'SecretPassword1!', srvUser: 'sysadmin', srvPwd: 'SecretPassword2!', srvUid: '2000', sshPort: '2222',
                 nameHqRtr: 'hq-rtr', nameHqSrv: 'hq-srv', nameHqCli: 'hq-cli', nameBrRtr: 'br-rtr', nameBrSrv: 'br-srv',
                 subnetIspHq: '192.168.4.0', subnetIspBr: '192.168.5.0',
                 subnet100: '192.168.100.0', subnet200: '192.168.200.0', subnet999: '192.168.99.0',
                 subnetBr: '192.168.30.0', subnetGre: '10.10.10.0',
+                vlan100: '100', vlan200: '200', vlan999: '999',
                 hosts100: '254', hosts200: '254', hosts999: '254', hostsBr: '254', hostsIsp: '14', hostsGre: '2'
+            },
+            'preset3': {
+                domain: 'au-team.irpo', timezone: 'Asia/Yekaterinburg', extDns: '77.88.8.7', cname1: 'docker', cname2: 'web',
+                rtrUser: 'net_admin', rtrPwd: 'P@ssw0rd', srvUser: 'sshuser', srvPwd: 'P@ssw0rd', srvUid: '2011', sshPort: '2011',
+                nameHqRtr: 'hq-rtr', nameHqSrv: 'hq-srv', nameHqCli: 'hq-cli', nameBrRtr: 'br-rtr', nameBrSrv: 'br-srv',
+                subnetIspHq: '172.16.10.0', subnetIspBr: '172.16.20.0',
+                subnet100: '172.16.100.0', subnet200: '172.16.200.0', subnet999: '172.16.99.0',
+                subnetBr: '172.16.6.0', subnetGre: '10.10.10.0',
+                vlan100: '111', vlan200: '211', vlan999: '811',
+                hosts100: '32', hosts200: '16', hosts999: '8', hostsBr: '16', hostsIsp: '14', hostsGre: '2'
             }
         };
 
